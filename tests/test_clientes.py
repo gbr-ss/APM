@@ -76,3 +76,43 @@ def test_edicao_de_cliente_rejeita_matricula_de_outro_cliente(
     assert response.status_code == 302
     assert "erro=matricula" in response.headers["location"]
     assert alvo.matricula == "A-1"
+
+
+def test_lista_de_clientes_pagina_resultados_e_preserva_filtros(
+    cliente, db_session_test
+):
+    db_session_test.add_all(
+        [
+            Cliente(
+                nome=f"Cliente {numero:02}",
+                matricula=f"MAT-{numero:02}",
+                is_associado=numero < 11,
+            )
+            for numero in range(12)
+        ]
+    )
+    db_session_test.commit()
+
+    primeira = cliente.get("/clientes/", params={"page": 1})
+    segunda = cliente.get("/clientes/", params={"page": 2})
+    associados_pagina_1 = cliente.get(
+        "/clientes/",
+        params={"busca": "Cliente", "apenas_associados": "true", "page": 1},
+    )
+    associados_pagina_2 = cliente.get(
+        "/clientes/",
+        params={"busca": "Cliente", "apenas_associados": "true", "page": 2},
+    )
+
+    assert "Cliente 00" in primeira.text
+    assert "Cliente 09" in primeira.text
+    assert "Cliente 10" not in primeira.text
+    assert "Cliente 10" in segunda.text
+    assert "Cliente 11" in segunda.text
+
+    assert "Cliente 09" in associados_pagina_1.text
+    assert "Cliente 10" not in associados_pagina_1.text
+    assert "Cliente 10" in associados_pagina_2.text
+    assert "Cliente 11" not in associados_pagina_2.text
+    assert "apenas_associados=true" in associados_pagina_2.text
+    assert "page=1" in associados_pagina_2.text

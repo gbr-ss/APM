@@ -4,6 +4,8 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="/static/css/cliente-index.css">
+<link rel="stylesheet" href="/static/css/list-filter.css?v=1">
+<link rel="stylesheet" href="/static/css/list-pages.css?v=1">
 {% endblock %}
 
 {% block conteudo %}
@@ -45,14 +47,14 @@
 
     <div class="cliente-filter-card">
 
-        <form method="get" action="/clientes" class="cliente-filter-form">
+        <form method="get" action="/clientes" class="cliente-filter-form list-filter list-filter--inset">
 
             <input
                 type="text"
                 name="busca"
                 placeholder="Buscar por nome ou matrícula..."
                 value="{{ busca }}"
-                class="cliente-search"
+                class="cliente-search form-input list-filter__search"
             >
 
             <label class="cliente-checkbox">
@@ -65,12 +67,12 @@
                 Apenas associados
             </label>
 
-            <button type="submit" class="btn-cliente">
+            <button type="submit" class="btn-primary">
                 Filtrar
             </button>
 
             {% if busca or apenas_associados %}
-            <a href="/clientes" class="btn-cliente btn-cliente--warn">
+            <a href="/clientes" class="btn-outline">
                 Limpar
             </a>
             {% endif %}
@@ -81,6 +83,7 @@
 
     <div class="cliente-table-card">
 
+        <div class="table-wrapper">
         <table class="cliente-table">
 
             <thead>
@@ -174,6 +177,9 @@
             </tbody>
 
         </table>
+        </div>
+
+        {% include "paginacao/index.html" %}
 
     </div>
 

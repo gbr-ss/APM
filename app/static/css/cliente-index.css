@@ -74,8 +74,9 @@
 
 .cliente-filter-card {
     background: var(--branco);
-    border-radius: 10px;
-    padding: 18px;
+    border: 1px solid var(--borda);
+    border-radius: 12px;
+    padding: 0;
     margin-bottom: 20px;
     box-shadow: 0 2px 10px rgba(16, 42, 67, 0.08);
 }
@@ -85,6 +86,12 @@
     gap: 10px;
     flex-wrap: wrap;
     align-items: center;
+}
+
+.cliente-filter-card > .cliente-filter-form {
+    margin: 0;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--borda);
 }
 
 .cliente-search {
@@ -108,7 +115,8 @@
 
 .cliente-table-card {
     background: var(--branco);
-    border-radius: 10px;
+    border: 1px solid var(--borda);
+    border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 2px 10px rgba(16, 42, 67, 0.08);
 }
@@ -119,18 +127,30 @@
 }
 
 .cliente-table thead {
-    background: var(--azul);
+    background: #f4f7fa;
 }
 
 .cliente-table th {
-    color: var(--laranja);
-    padding: 14px;
+    color: var(--texto-secundario);
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--borda);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .06em;
     text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .cliente-table td {
-    padding: 14px;
-    border-bottom: 1px solid var(--fundo);
+    padding: 13px 16px;
+    border-bottom: 1px solid #edf1f5;
+    color: var(--texto);
+    vertical-align: middle;
+}
+
+.cliente-table tbody tr:last-child td {
+    border-bottom: 0;
 }
 
 .cliente-table tbody tr:hover {
@@ -242,4 +262,18 @@
     text-align: center;
     padding: 20px !important;
     color: var(--texto-secundario);
+}
+
+@media (max-width: 700px) {
+    .clientes-page {
+        padding: 14px;
+    }
+
+    .cliente-filter-card > .cliente-filter-form {
+        padding: 14px;
+    }
+
+    .cliente-table {
+        min-width: 700px;
+    }
 }

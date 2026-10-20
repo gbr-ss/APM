@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.cliente import Cliente
 from app.auth import get_admin
+from app.pagination import paginate
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
 templates = Jinja2Templates(directory="app/templates")
@@ -20,9 +21,11 @@ def listar_clientes(
     request: Request,
     busca: str = "",
     apenas_associados: bool = False,
+    page: int = 1,
     db: Session = Depends(get_db),
     admin = Depends(get_admin)
 ):
+    busca = busca.strip()
     query = db.query(Cliente)
 
     if busca:
@@ -34,7 +37,7 @@ def listar_clientes(
     if apenas_associados:
         query = query.filter(Cliente.is_associado == True)
 
-    clientes = query.order_by(Cliente.nome).all()
+    clientes, pagination = paginate(query.order_by(Cliente.nome), page)
 
     total_associados = db.query(Cliente).filter(
         Cliente.is_associado == True,
@@ -48,6 +51,7 @@ def listar_clientes(
             "request":           request,
             "usuario":           admin,
             "clientes":          clientes,
+            "pagination":        pagination,
             "busca":             busca,
             "apenas_associados": apenas_associados,
             "total_associados":  total_associados,
