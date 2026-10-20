@@ -3,7 +3,7 @@
 {% block titulo %}PDV — AAPM SENAI{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="/static/css/pdv.css?v=5">
+<link rel="stylesheet" href="/static/css/pdv.css?v=6">
 <style>
     body { overflow: hidden !important; }
     @media (max-width: 900px) { body { overflow: auto !important; } }
@@ -253,6 +253,39 @@
 
                 </button>
 
+                <dialog id="dialog-finalizar-venda" aria-labelledby="dialog-finalizar-titulo">
+                    <h2 id="dialog-finalizar-titulo">Confirmar venda</h2>
+                    <p>Confira o desconto e informe como o cliente vai pagar.</p>
+
+                    <fieldset>
+                        <legend>Pagamento</legend>
+                        <div id="lista-pagamentos"></div>
+                        <input type="hidden" name="pagamentos_json" id="pagamentos-json">
+                        <button type="button" id="adicionar-pagamento">+ Adicionar método</button>
+                        <p>Total: <span id="pagamento-total">R$ 0,00</span></p>
+                        <p>Pago: <span id="pagamento-pago">R$ 0,00</span></p>
+                        <p><span id="pagamento-restante-label">Restante</span>: <span id="pagamento-restante">R$ 0,00</span></p>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Desconto manual (opcional)</legend>
+                        <label for="desconto-manual-tipo">Tipo</label>
+                        <select id="desconto-manual-tipo" name="desconto_manual_tipo">
+                            <option value="nenhum">Sem desconto manual</option>
+                            <option value="valor">Valor em R$</option>
+                            <option value="percentual">Porcentagem</option>
+                        </select>
+                        <label for="desconto-manual-valor">Desconto</label>
+                        <input id="desconto-manual-valor" name="desconto_manual_valor" type="number" min="0" step="0.01" value="0">
+                        <p id="desconto-manual-aviso" role="status"></p>
+                    </fieldset>
+
+                    <div class="dialog-acoes">
+                        <button type="button" id="voltar-edicao-venda">Voltar</button>
+                        <button type="submit" id="btn-confirmar-venda" disabled>Confirmar e salvar venda</button>
+                    </div>
+                </dialog>
+
             </form>
 
         </div>
@@ -261,6 +294,6 @@
 
 </div>
 
-<script src="/static/js/pdv.js?v=6"></script>
+<script src="/static/js/pdv.js?v=7"></script>
 
 {% endblock %}

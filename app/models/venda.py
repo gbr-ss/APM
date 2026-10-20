@@ -9,7 +9,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, Float, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -37,6 +37,8 @@ class Venda(Base):
     # Percentual de desconto aplicado — 0.0 ou 10.0
     # Guardamos o valor histórico para não depender do cadastro do cliente
     desconto_percentual = Column(Float, nullable=False, default=0.0)
+    desconto_manual_tipo = Column(String(10), nullable=True)
+    desconto_manual_valor = Column(Float, nullable=False, default=0.0)
 
     # Valores calculados e persistidos para histórico imutável
     # (mesmo que o preço do produto mude, a venda permanece correta)
@@ -55,6 +57,12 @@ class Venda(Base):
         "ItemVenda",
         back_populates="venda",
         cascade="all, delete-orphan"  # deleta itens se a venda for deletada
+    )
+    pagamentos = relationship(
+        "PagamentoVenda",
+        back_populates="venda",
+        cascade="all, delete-orphan",
+        order_by="PagamentoVenda.id",
     )
 
     @property
@@ -95,3 +103,18 @@ class ItemVenda(Base):
     # Relacionamentos
     venda   = relationship("Venda", back_populates="itens")
     produto = relationship("Produto", backref="itens_venda")
+
+
+class PagamentoVenda(Base):
+    __tablename__ = "pagamentos_venda"
+
+    id = Column(Integer, primary_key=True, index=True)
+    venda_id = Column(
+        Integer,
+        ForeignKey("vendas.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    metodo = Column(String(20), nullable=False)
+    valor = Column(Float, nullable=False)
+
+    venda = relationship("Venda", back_populates="pagamentos")

@@ -1,4 +1,5 @@
 import json
+import math
 
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
@@ -6,7 +7,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models.venda import Venda, ItemVenda
+from app.models.venda import Venda, ItemVenda, PagamentoVenda
 from app.models.produto import Produto
 from app.models.produto_tamanho import ProdutoTamanho
 from app.models.cliente import Cliente
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/pdv", tags=["PDV"])
 templates = Jinja2Templates(directory="app/templates")
 
 DESCONTO_ASSOCIADO = 10.0
+METODOS_PAGAMENTO = {"pix", "debito", "credito", "dinheiro"}
 
 
 @router.get("/")
@@ -62,6 +64,13 @@ def finalizar_venda(
     carrinho_json: str = Form(...),
     cliente_id: int = Form(0),
     observacao: str = Form(""),
+    pagamentos_json: str = Form(""),
+    metodo_pagamento_1: str = Form(""),
+    valor_pagamento_1: float = Form(0),
+    metodo_pagamento_2: str = Form(""),
+    valor_pagamento_2: float = Form(0),
+    desconto_manual_tipo: str = Form("nenhum"),
+    desconto_manual_valor: float = Form(0),
     db: Session = Depends(get_db),
     usuario=Depends(get_usuario_logado)
 ):
@@ -134,13 +143,74 @@ def finalizar_venda(
             "preco": produto.preco,
         })
 
-    desconto_valor = total_bruto * (desconto_percentual / 100)
-    total_liquido = total_bruto - desconto_valor
+    desconto_associado_valor = total_bruto * (desconto_percentual / 100)
+    if not math.isfinite(desconto_manual_valor):
+        return RedirectResponse("/pdv?erro=desconto", 302)
+    desconto_manual_valor = round(desconto_manual_valor, 2)
+    if desconto_manual_valor < 0:
+        return RedirectResponse("/pdv?erro=desconto", 302)
+
+    if desconto_manual_tipo == "percentual":
+        if desconto_manual_valor > 100:
+            return RedirectResponse("/pdv?erro=desconto", 302)
+        desconto_manual_calculado = total_bruto * (desconto_manual_valor / 100)
+    elif desconto_manual_tipo == "valor":
+        desconto_manual_calculado = desconto_manual_valor
+    elif desconto_manual_tipo == "nenhum" and desconto_manual_valor == 0:
+        desconto_manual_calculado = 0.0
+        desconto_manual_tipo = None
+    else:
+        return RedirectResponse("/pdv?erro=desconto", 302)
+
+    if desconto_manual_calculado > total_bruto - desconto_associado_valor + 0.01:
+        return RedirectResponse("/pdv?erro=desconto", 302)
+
+    total_liquido = round(
+        total_bruto - desconto_associado_valor - desconto_manual_calculado, 2
+    )
+
+    try:
+        pagamentos_recebidos = json.loads(pagamentos_json) if pagamentos_json else []
+    except (json.JSONDecodeError, ValueError):
+        return RedirectResponse("/pdv?erro=pagamento", 302)
+
+    if not pagamentos_recebidos and metodo_pagamento_1:
+        pagamentos_recebidos = [{
+            "metodo": metodo_pagamento_1,
+            "valor": valor_pagamento_1,
+        }]
+        if metodo_pagamento_2:
+            pagamentos_recebidos.append({
+                "metodo": metodo_pagamento_2,
+                "valor": valor_pagamento_2,
+            })
+
+    if not isinstance(pagamentos_recebidos, list) or not pagamentos_recebidos:
+        return RedirectResponse("/pdv?erro=pagamento", 302)
+
+    pagamentos_validados = []
+    for pagamento in pagamentos_recebidos:
+        if not isinstance(pagamento, dict):
+            return RedirectResponse("/pdv?erro=pagamento", 302)
+        metodo = str(pagamento.get("metodo", "")).strip().lower()
+        try:
+            valor = round(float(pagamento.get("valor", 0)), 2)
+        except (TypeError, ValueError):
+            return RedirectResponse("/pdv?erro=pagamento", 302)
+        if metodo not in METODOS_PAGAMENTO or not math.isfinite(valor) or valor <= 0:
+            return RedirectResponse("/pdv?erro=pagamento", 302)
+        pagamentos_validados.append({"metodo": metodo, "valor": valor})
+
+    total_pago = round(sum(pagamento["valor"] for pagamento in pagamentos_validados), 2)
+    if abs(total_pago - total_liquido) > 0.01:
+        return RedirectResponse("/pdv?erro=pagamento", 302)
 
     venda = Venda(
         cliente_id=cliente.id if cliente else None,
         usuario_id=usuario.get("id"),
         desconto_percentual=desconto_percentual,
+        desconto_manual_tipo=desconto_manual_tipo,
+        desconto_manual_valor=desconto_manual_valor,
         total_bruto=round(total_bruto, 2),
         total_liquido=round(total_liquido, 2),
         observacao=observacao or None,
@@ -148,6 +218,13 @@ def finalizar_venda(
 
     db.add(venda)
     db.flush()
+
+    for pagamento in pagamentos_validados:
+        db.add(PagamentoVenda(
+            venda_id=venda.id,
+            metodo=pagamento["metodo"],
+            valor=pagamento["valor"],
+        ))
 
     for item in itens_validados:
         produto = item["produto"]

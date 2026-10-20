@@ -44,6 +44,7 @@ Histórico de Vendas - AAPM SENAI
                     <th>Itens</th>
                     <th>Desconto</th>
                     <th>Total</th>
+                    <th>Pagamento</th>
                     <th>Operador</th>
                 </tr>
             </thead>
@@ -78,10 +79,14 @@ Histórico de Vendas - AAPM SENAI
 
                     <td>
 
-                        {% if v.desconto_percentual > 0 %}
+                        {% if v.desconto_valor > 0 %}
 
                             <span class="badge-desconto">
-                                {{ v.desconto_percentual|int }}%
+                                {% if v.desconto_manual_valor > 0 %}
+                                    Manual {% if v.desconto_manual_tipo == 'percentual' %}{{ v.desconto_manual_valor|round(2) }}%{% else %}R$ {{ "%.2f"|format(v.desconto_manual_valor) }}{% endif %}
+                                {% else %}
+                                    {{ v.desconto_percentual|int }}%
+                                {% endif %}
                                 (- R$ {{ "%.2f"|format(v.desconto_valor) }})
                             </span>
 
@@ -98,6 +103,14 @@ Histórico de Vendas - AAPM SENAI
                     </td>
 
                     <td>
+                        {% for pagamento in v.pagamentos %}
+                            {% if pagamento.metodo == 'dinheiro' %}Dinheiro físico{% else %}{{ pagamento.metodo|capitalize }}{% endif %}: R$ {{ "%.2f"|format(pagamento.valor) }}{% if not loop.last %}<br>{% endif %}
+                        {% else %}
+                            —
+                        {% endfor %}
+                    </td>
+
+                    <td>
                         {{ v.usuario.nome if v.usuario else "—" }}
                     </td>
 
@@ -109,7 +122,7 @@ Histórico de Vendas - AAPM SENAI
                 {% if not vendas %}
 
                 <tr>
-                    <td colspan="7" class="sem-registros">
+                    <td colspan="8" class="sem-registros">
                         Nenhuma venda encontrada.
                     </td>
                 </tr>

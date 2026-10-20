@@ -93,9 +93,7 @@ Comprovante #{{ venda.id }} — AAPM SENAI
 
         <div class="total-linha desc-linha">
 
-            <span>
-                Desconto ({{ venda.desconto_percentual|int }}%)
-            </span>
+            <span>Desconto total</span>
 
             <span>
                 − R$ {{ "%.2f"|format(venda.desconto_valor) }}
@@ -103,6 +101,16 @@ Comprovante #{{ venda.id }} — AAPM SENAI
 
         </div>
 
+        {% endif %}
+
+        {% if venda.desconto_manual_valor > 0 %}
+        <div class="item-desc">
+            {% if venda.desconto_manual_tipo == 'percentual' %}
+                Desconto manual ({{ venda.desconto_manual_valor|round(2) }}%)
+            {% else %}
+                Desconto manual (R$ {{ "%.2f"|format(venda.desconto_manual_valor) }})
+            {% endif %}
+        </div>
         {% endif %}
 
 
@@ -115,6 +123,16 @@ Comprovante #{{ venda.id }} — AAPM SENAI
             </span>
 
         </div>
+
+        {% if venda.pagamentos %}
+        <hr class="linha-sep">
+        {% for pagamento in venda.pagamentos %}
+        <div class="item-linha">
+            <span>Pagamento {{ loop.index }} · {% if pagamento.metodo == 'dinheiro' %}Dinheiro físico{% else %}{{ pagamento.metodo|capitalize }}{% endif %}</span>
+            <span>R$ {{ "%.2f"|format(pagamento.valor) }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
 
 
         {% if venda.observacao %}

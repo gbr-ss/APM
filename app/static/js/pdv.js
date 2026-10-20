@@ -1,6 +1,7 @@
 // Inicialização segura das variáveis globais
 let carrinho = [];
 let clienteAtual = { id: 0, associado: false };
+let primeiroPagamentoAlterado = false;
 
 // Captura a taxa de desconto definida no HTML através do data-attribute
 const DESCONTO_PCT =
@@ -349,6 +350,8 @@ function renderizarCarrinho() {
         if (btnFinal)
             btnFinal.disabled = true;
 
+        renderizarTotais();
+
         return;
     }
 
@@ -541,6 +544,67 @@ function renderizarCarrinho() {
 // RECALCULAR TOTAIS
 // ==========================================================
 
+const listaPagamentos = document.getElementById('lista-pagamentos');
+const opcoesPagamento = [
+    ['pix', 'Pix'],
+    ['debito', 'Débito'],
+    ['credito', 'Crédito'],
+    ['dinheiro', 'Dinheiro físico']
+];
+
+function adicionarLinhaPagamento(metodo = '') {
+    if (!listaPagamentos) return null;
+    const primeiro = listaPagamentos.children.length === 0;
+    const linha = document.createElement('div');
+    linha.className = 'payment-row';
+    linha.dataset.primeiro = String(primeiro);
+    linha.dataset.alterado = 'false';
+
+    const opcoes = opcoesPagamento.map(([valor, rotulo]) =>
+        `<option value="${valor}">${rotulo}</option>`
+    ).join('');
+    linha.innerHTML = `
+        <label>Forma ${listaPagamentos.children.length + 1}
+            <select class="payment-method" required>
+                <option value="">Selecione o método</option>
+                ${opcoes}
+            </select>
+        </label>
+        <label>Valor
+            <input class="payment-value" type="number" min="0" step="0.01" value="0" required>
+        </label>
+        <button type="button" class="payment-remove" aria-label="Remover método de pagamento" ${primeiro ? 'hidden' : ''}>Remover</button>
+    `;
+    listaPagamentos.appendChild(linha);
+    const seletor = linha.querySelector('.payment-method');
+    if (metodo) seletor.value = metodo;
+    renderizarTotais();
+    return seletor;
+}
+
+adicionarLinhaPagamento('pix');
+
+document.getElementById('adicionar-pagamento')?.addEventListener('click', () => {
+    adicionarLinhaPagamento()?.focus();
+});
+
+listaPagamentos?.addEventListener('input', event => {
+    if (event.target.matches('.payment-value')) {
+        const linha = event.target.closest('.payment-row');
+        linha.dataset.alterado = 'true';
+        if (linha.dataset.primeiro === 'true') primeiroPagamentoAlterado = true;
+    }
+    renderizarTotais();
+});
+
+listaPagamentos?.addEventListener('change', renderizarTotais);
+listaPagamentos?.addEventListener('click', event => {
+    const botao = event.target.closest('.payment-remove');
+    if (!botao) return;
+    botao.closest('.payment-row')?.remove();
+    renderizarTotais();
+});
+
 function renderizarTotais() {
 
     const subtotal = carrinho.reduce(
@@ -557,8 +621,18 @@ function renderizarTotais() {
             : 0;
 
 
-    const total =
-        subtotal - descontoValor;
+    const tipoDescontoManual = document.getElementById('desconto-manual-tipo')?.value || 'nenhum';
+    const entradaDescontoManual = parseFloat(document.getElementById('desconto-manual-valor')?.value) || 0;
+    const descontoManual = tipoDescontoManual === 'valor'
+        ? entradaDescontoManual
+        : tipoDescontoManual === 'percentual'
+            ? subtotal * entradaDescontoManual / 100
+            : 0;
+    const descontoDisponivel = Math.max(0, subtotal - descontoValor);
+    const descontoManualValido = entradaDescontoManual >= 0 &&
+        (tipoDescontoManual !== 'percentual' || entradaDescontoManual <= 100) &&
+        descontoManual <= descontoDisponivel + 0.01;
+    const total = Math.max(0, subtotal - descontoValor - descontoManual);
 
 
     const formatarMoeda = valor =>
@@ -584,6 +658,14 @@ function renderizarTotais() {
         elemTotal.textContent =
             formatarMoeda(total);
 
+    const avisoDesconto = document.getElementById('desconto-manual-aviso');
+    if (avisoDesconto) {
+        avisoDesconto.textContent = descontoManualValido
+            ? (descontoValor > 0 ? `Associado: ${formatarMoeda(descontoValor)}. ` : '') +
+              (descontoManual > 0 ? `Manual: ${formatarMoeda(descontoManual)}.` : '')
+            : 'O desconto manual não pode ultrapassar o subtotal disponível.';
+    }
+
 
     const linhaDesc =
         document.getElementById('linha-desconto');
@@ -605,19 +687,67 @@ function renderizarTotais() {
 
 
         if (labelDesc)
-            labelDesc.textContent =
-                `Desconto (${DESCONTO_PCT}%)`;
+            labelDesc.textContent = 'Desconto total';
 
 
         if (valDesc)
             valDesc.textContent =
-                `− ${formatarMoeda(descontoValor)}`;
+            `− ${formatarMoeda(descontoValor + (descontoManualValido ? descontoManual : 0))}`;
 
+    } else if (linhaDesc && descontoManualValido && descontoManual > 0) {
+        linhaDesc.style.display = 'flex';
+        if (labelDesc) labelDesc.textContent = 'Desconto total';
+        if (valDesc) valDesc.textContent = `− ${formatarMoeda(descontoManual)}`;
     } else if (linhaDesc) {
 
         linhaDesc.style.display = 'none';
     }
+
+    const linhasPagamento = Array.from(listaPagamentos?.querySelectorAll('.payment-row') || []);
+    const linhaInicial = linhasPagamento[0];
+    const campoInicial = linhaInicial?.querySelector('.payment-value');
+    if (campoInicial && !primeiroPagamentoAlterado) {
+        const somaDemais = linhasPagamento.slice(1).reduce((soma, linha) => {
+            const valor = parseFloat(linha.querySelector('.payment-value')?.value) || 0;
+            return soma + valor;
+        }, 0);
+        campoInicial.value = Math.max(0, total - somaDemais).toFixed(2);
+    }
+
+    const pagamentos = linhasPagamento.map(linha => ({
+        metodo: linha.querySelector('.payment-method')?.value || '',
+        valor: parseFloat(linha.querySelector('.payment-value')?.value) || 0
+    }));
+    const pago = pagamentos.reduce((soma, pagamento) => soma + pagamento.valor, 0);
+    const restante = total - pago;
+    const elemPagamentoTotal = document.getElementById('pagamento-total');
+    const elemPagamentoPago = document.getElementById('pagamento-pago');
+    const elemPagamentoRestante = document.getElementById('pagamento-restante');
+    const labelPagamentoRestante = document.getElementById('pagamento-restante-label');
+    const inputPagamentos = document.getElementById('pagamentos-json');
+    if (inputPagamentos) inputPagamentos.value = JSON.stringify(pagamentos);
+    if (elemPagamentoTotal) elemPagamentoTotal.textContent = formatarMoeda(total);
+    if (elemPagamentoPago) elemPagamentoPago.textContent = formatarMoeda(pago);
+    if (labelPagamentoRestante) labelPagamentoRestante.textContent = restante < -0.01 ? 'Excedente' : 'Restante';
+    if (elemPagamentoRestante) elemPagamentoRestante.textContent = formatarMoeda(Math.abs(restante));
+    const pagamentosValidos = pagamentos.length > 0 && pagamentos.every(pagamento =>
+        opcoesPagamento.some(([metodo]) => metodo === pagamento.metodo) &&
+        Number.isFinite(pagamento.valor) && pagamento.valor > 0
+    );
+    const pagamentoValido = pagamentosValidos && Math.abs(restante) <= 0.01;
+    const btnConfirmar = document.getElementById('btn-confirmar-venda');
+    const tamanhoPendente = carrinho.some(item => item.tem_tamanho && !item.tamanho_id);
+    if (btnConfirmar) {
+        btnConfirmar.disabled = carrinho.length === 0 || tamanhoPendente || !pagamentoValido || !descontoManualValido;
+    }
 }
+
+document.getElementById('desconto-manual-tipo')?.addEventListener('change', renderizarTotais);
+document.getElementById('desconto-manual-valor')?.addEventListener('input', renderizarTotais);
+document.getElementById('voltar-edicao-venda')?.addEventListener('click', () => {
+    document.getElementById('dialog-finalizar-venda')?.close();
+});
+renderizarTotais();
 
 
 // ==========================================================
@@ -647,7 +777,6 @@ function finalizarVenda() {
     }
 
 
-    const confirmarFinalizacao = () => {
     document.getElementById(
         'input-carrinho'
     ).value = JSON.stringify(
@@ -691,19 +820,7 @@ function finalizarVenda() {
             'obs-input'
         ).value;
 
-
-    document.getElementById(
-        'form-venda'
-    ).submit();
-    };
-
-    window.openConfirmation({
-        title: 'Finalizar venda?',
-        message: 'Tem certeza que deseja finalizar esta venda?',
-        cancelText: 'Voltar',
-        confirmText: 'Finalizar venda',
-        onConfirm: confirmarFinalizacao
-    });
+    document.getElementById('dialog-finalizar-venda')?.showModal();
 }
 
 

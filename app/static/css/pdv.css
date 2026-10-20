@@ -457,6 +457,130 @@ body {
     box-shadow: none;
 }
 
+#dialog-finalizar-venda {
+    width: min(520px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    overflow: auto;
+    border: 1px solid var(--borda);
+    border-radius: 10px;
+    padding: 20px;
+    color: var(--texto);
+    background: var(--branco);
+}
+
+#dialog-finalizar-venda::backdrop {
+    background: rgba(15, 23, 42, 0.55);
+}
+
+#dialog-finalizar-venda h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+}
+
+#dialog-finalizar-venda fieldset {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+}
+
+#dialog-finalizar-venda legend {
+    padding: 0 5px;
+    font-weight: 700;
+}
+
+#dialog-finalizar-venda input,
+#dialog-finalizar-venda select {
+    width: 100%;
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 1px solid var(--borda);
+    border-radius: 5px;
+    background: var(--branco);
+}
+
+#lista-pagamentos {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 8px;
+}
+
+.payment-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+}
+
+.payment-row label {
+    display: grid;
+    gap: 4px;
+}
+
+.payment-remove {
+    min-height: 36px;
+    padding: 6px 8px;
+    border: 1px solid var(--borda);
+    border-radius: 5px;
+    background: var(--branco);
+    cursor: pointer;
+}
+
+#adicionar-pagamento {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 36px;
+    padding: 6px 10px;
+    border: 1px solid var(--borda);
+    border-radius: 5px;
+    background: var(--branco);
+    cursor: pointer;
+}
+
+.dialog-acoes {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.dialog-acoes button {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--borda);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#btn-confirmar-venda {
+    color: var(--branco);
+    background: var(--verde);
+    border-color: var(--verde);
+}
+
+#btn-confirmar-venda:disabled {
+    background: #94a3b8;
+    border-color: #94a3b8;
+    cursor: not-allowed;
+}
+
+@media (max-width: 520px) {
+    #dialog-finalizar-venda {
+        padding: 14px;
+    }
+
+    .payment-row {
+        grid-template-columns: 1fr;
+    }
+
+    .dialog-acoes {
+        flex-direction: column-reverse;
+    }
+}
+
 .pdv-cart-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
