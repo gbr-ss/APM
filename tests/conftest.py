@@ -46,3 +46,17 @@ def cliente(db_session_test):
             yield test_client
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def cliente_sem_autenticacao(db_session_test):
+    def get_db_teste():
+        yield db_session_test
+
+    app.dependency_overrides[get_db] = get_db_teste
+
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
